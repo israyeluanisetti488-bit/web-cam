@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>VisionAI | Object Detection</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #0b1020;
+    color: #f1f5f9;
+}
+
+header {
+    padding: 22px 6%;
+    background: #111a30;
+    border-bottom: 1px solid #293550;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+header h1 {
+    color: #60a5fa;
+    font-size: 25px;
+}
+
+header span {
+    color: #4ade80;
+    font-size: 13px;
+}
+
+.container {
+    max-width: 1250px;
+    margin: auto;
+    padding: 28px 20px;
+}
+
+.hero {
+    margin-bottom: 25px;
+}
+
+.hero h2 {
+    font-size: 30px;
+    margin-bottom: 10px;
+}
+
+.hero p {
+    color: #a7b4cc;
+    line-height: 1.7;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 25px 0;
+}
+
+.card {
+    background: #141e35;
+    padding: 22px;
+    border: 1px solid #293550;
+    border-radius: 14px;
+}
+
+.card p {
+    color: #a7b4cc;
+    font-size: 14px;
+}
+
+.card h2 {
+    color: #60a5fa;
+    margin-top: 12px;
+    font-size: 28px;
+}
+
+.workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+    gap: 20px;
+}
+
+h3 {
+    margin-bottom: 18px;
+}
+
+.video-box {
+    background: #050914;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #293550;
+    position: relative;
+    min-height: 250px;
+}
+
+#video {
+    display: none;
+}
+
+#canvas {
+    width: 100%;
+    display: block;
+}
+
+.placeholder {
+    padding: 70px 15px;
+    text-align: center;
+    color: #94a3b8;
+}
+
+.controls {
+    margin-top: 18px;
+}
+
+label {
+    display: block;
+    margin: 16px 0 8px;
+    color: #cbd5e1;
+}
+
+select, input[type="range"] {
+    width: 100%;
+}
+
+select {
+    padding: 12px;
+    border-radius: 8px;
+    background: #0b1020;
+    color: white;
+    border: 1px solid #334155;
+}
+
+button {
+    border: none;
+    padding: 12px 18px;
+    margin: 10px 6px 0 0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.start {
+    background: #2563eb;
+    color: white;
+}
+
+.stop {
+    background: #dc2626;
+    color: white;
+}
+
+.clear {
+    background: #334155;
+    color: white;
+}
+
+.status {
+    margin-top: 15px;
+    color: #fbbf24;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.object-list {
+    margin-top: 18px;
+}
+
+.object-item {
+    background: #0b1020;
+    border: 1px solid #293550;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.logs {
+    margin-top: 25px;
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 500px;
+}
+
+th, td {
+    padding: 13px;
+    text-align: left;
+    border-bottom: 1px solid #293550;
+    font-size: 13px;
+}
+
+th {
+    color: #60a5fa;
+}
+
+footer {
+    text-align: center;
+    padding: 25px;
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+@media(max-width: 800px) {
+    .workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .hero h2 {
+        font-size: 24px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>🎯 VisionAI</h1>
+    <span>● Browser-Based AI Platform</span>
+</header>
+
+<main class="container">
+
+    <section class="hero">
+        <h2>Real-Time Object Detection</h2>
+        <p>
+            Detect objects through your webcam using TensorFlow.js
+            and the COCO-SSD machine-learning model.
+            View bounding boxes, confidence scores and event history.
+        </p>
+    </section>
+
+    <section class="stats">
+
+        <div class="card">
+            <p>Detection Events</p>
+            <h2 id="total">0</h2>
+        </div>
+
+        <div class="card">
+            <p>Objects Currently Detected</p>
+            <h2 id="current">0</h2>
+        </div>
+
+        <div class="card">
+            <p>Unique Object Classes</p>
+            <h2 id="classes">0</h2>
+        </div>
+
+    </section>
+
+    <section class="workspace">
+
+        <div class="card">
+
+            <h3>📷 Live Detection Feed</h3>
+
+            <div class="video-box">
+
+                <video id="video" autoplay muted playsinline></video>
+
+                <canvas id="canvas"></canvas>
+
+                <div class="placeholder" id="placeholder">
+                    <h2>📹</h2>
+                    <p>Start the camera to detect objects</p>
+                </div>
+
+            </div>
+
+            <button class="start" id="startBtn">
+                ▶ Start Detection
+            </button>
+
+            <button class="stop" id="stopBtn">
+                ■ Stop Detection
+            </button>
+
+            <p class="status" id="status">
+                Status: Waiting to start
+            </p>
+
+        </div>
+
+        <div class="card">
+
+            <h3>⚙️ Detection Settings</h3>
+
+            <div class="controls">
+
+                <label for="objectFilter">
+                    Object Class
+                </label>
+
+                <select id="objectFilter">
+                    <option value="all">All Objects</option>
+                    <option value="person">Person</option>
+                    <option value="cell phone">Cell Phone</option>
+                    <option value="laptop">Laptop</option>
+                    <option value="bottle">Bottle</option>
+                    <option value="chair">Chair</option>
+                    <option value="cup">Cup</option>
+                    <option value="book">Book</option>
+                    <option value="car">Car</option>
+                    <option value="dog">Dog</option>
+                    <option value="cat">Cat</option>
+                </select>
+
+                <label for="confidence">
+                    Confidence Threshold:
+                    <strong id="confidenceValue">50%</strong>
+                </label>
+
+                <input
+                    type="range"
+                    id="confidence"
+                    min="10"
+                    max="95"
+                    value="50"
+                >
+
+                <div class="object-list">
+                    <h3>🔍 Detected Objects</h3>
+                    <div id="objectList">
+                        <p style="color:#94a3b8">
+                            No objects detected yet.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <section class="card logs">
+
+        <h3>📝 Detection Event History</h3>
+
+        <button class="clear" id="clearBtn">
+            Clear History
+        </button>
+
+        <div class="table-wrap">
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Object</th>
+                        <th>Confidence</th>
+                        <th>Position</th>
+                    </tr>
+                </thead>
+
+                <tbody id="logBody">
+                    <tr>
+                        <td colspan="4">No events recorded.</td>
+                    </tr>
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+</main>
+
+<footer>
+    VisionAI Object Detection Platform | Built with JavaScript and TensorFlow.js
+</footer>
+
+<script>
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const clearBtn = document.getElementById("clearBtn");
+
+const statusText = document.getElementById("status");
+const placeholder = document.getElementById("placeholder");
+
+const confidence = document.getElementById("confidence");
+const confidenceValue = document.getElementById("confidenceValue");
+const objectFilter = document.getElementById("objectFilter");
+
+let model = null;
+let stream = null;
+let running = false;
+let busy = false;
+
+let totalEvents = 0;
+let latestDetections = [];
+let eventHistory = [];
+let seenClasses = new Set();
+
+let lastLogged = {};
+let animationId = null;
+
+confidence.addEventListener("input", () => {
+    confidenceValue.textContent = confidence.value + "%";
+});
+
+async function loadModel() {
+    if (model) return model;
+
+    statusText.textContent = "Loading AI model... Please wait.";
+
+    model = await cocoSsd.load();
+
+    return model;
+}
+
+startBtn.addEventListener("click", startDetection);
+stopBtn.addEventListener("click", stopDetection);
+
+async function startDetection() {
+    if (running) return;
+
+    try {
+        if (!navigator.mediaDevices ||
+            !navigator.mediaDevices.getUserMedia) {
+            throw new Error(
+                "Camera access requires localhost or HTTPS."
+            );
+        }
+
+        startBtn.disabled = true;
+
+        statusText.textContent = "Loading AI model...";
+
+        await loadModel();
+
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: "user"
+            },
+            audio: false
+        });
+
+        video.srcObject = stream;
+
+        await new Promise((resolve, reject) => {
+            video.onloadedmetadata = resolve;
+            video.onerror = reject;
+        });
+
+        await video.play();
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        placeholder.style.display = "none";
+        video.style.display = "none";
+
+        running = true;
+
+        statusText.textContent = "Status: Camera active";
+
+        detectFrame();
+
+    } catch (error) {
+        statusText.textContent =
+            "Error: " + error.message;
+
+        alert(
+            "Unable to start detection.\n\n" +
+            error.message +
+            "\n\nOpen the project through VS Code Live Server " +
+            "and allow camera permission."
+        );
+
+    } finally {
+        startBtn.disabled = false;
+    }
+}
+
+async function detectFrame() {
+    if (!running || busy) return;
+
+    if (video.readyState < 2) {
+        animationId = requestAnimationFrame(detectFrame);
+        return;
+    }
+
+    busy = true;
+
+    try {
+        const predictions = await model.detect(video);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.drawImage(
+            video,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+        const threshold = Number(confidence.value) / 100;
+        const selected = objectFilter.value;
+
+        const filtered = predictions.filter(item => {
+            const confidenceMatch = item.score >= threshold;
+
+            const classMatch =
+                selected === "all" ||
+                item.class === selected;
+
+            return confidenceMatch && classMatch;
+        });
+
+        latestDetections = filtered;
+
+        for (const item of filtered) {
+            const [x, y, width, height] = item.bbox;
+
+            ctx.strokeStyle = "#22c55e";
+            ctx.lineWidth = Math.max(2, canvas.width / 400);
+
+            ctx.strokeRect(x, y, width, height);
+
+            const label =
+                item.class + " " +
+                (item.score * 100).toFixed(1) + "%";
+
+            ctx.font = "bold 15px Arial";
+
+            const textWidth = ctx.measureText(label).width;
+
+            ctx.fillStyle = "#16a34a";
+
+            ctx.fillRect(
+                x,
+                Math.max(0, y - 25),
+                textWidth + 12,
+                25
+            );
+
+            ctx.fillStyle = "#ffffff";
+
+            ctx.fillText(
+                label,
+                x + 6,
+                Math.max(17, y - 8)
+            );
+        }
+
+        document.getElementById("current").textContent =
+            filtered.length;
+
+        document.getElementById("objectList").innerHTML =
+            filtered.length
+                ? filtered.map(item => `
+                    <div class="object-item">
+                        <span>${escapeHTML(item.class)}</span>
+                        <strong>
+                            ${(item.score * 100).toFixed(1)}%
+                        </strong>
+                    </div>
+                `).join("")
+                : '<p style="color:#94a3b8">No matching objects.</p>';
+
+        // Log each class no more than once every 2 seconds.
+        const now = Date.now();
+
+        for (const item of filtered) {
+            const key = item.class;
+
+            if (!lastLogged[key] ||
+                now - lastLogged[key] >= 2000) {
+
+                lastLogged[key] = now;
+
+                addEvent(item);
+            }
+        }
+
+    } catch (error) {
+        statusText.textContent =
+            "Detection error: " + error.message;
+
+    } finally {
+        busy = false;
+
+        if (running) {
+            animationId = requestAnimationFrame(detectFrame);
+        }
+    }
+}
+
+function addEvent(item) {
+    const now = new Date();
+
+    const event = {
+        time: now.toLocaleTimeString(),
+        object: item.class,
+        confidence: (item.score * 100).toFixed(1) + "%",
+        position: item.bbox.map(
+            value => Math.round(value)
+        ).join(", ")
+    };
+
+    eventHistory.unshift(event);
+
+    // Keep the latest 100 events in browser memory.
+    eventHistory = eventHistory.slice(0, 100);
+
+    totalEvents++;
+
+    seenClasses.add(item.class);
+
+    document.getElementById("total").textContent =
+        totalEvents;
+
+    document.getElementById("classes").textContent =
+        seenClasses.size;
+
+    renderHistory();
+}
+
+function renderHistory() {
+    const logBody = document.getElementById("logBody");
+
+    if (eventHistory.length === 0) {
+        logBody.innerHTML =
+            '<tr><td colspan="4">No events recorded.</td></tr>';
+        return;
+    }
+
+    logBody.innerHTML = eventHistory.map(event => `
+        <tr>
+            <td>${escapeHTML(event.time)}</td>
+            <td>${escapeHTML(event.object)}</td>
+            <td>${escapeHTML(event.confidence)}</td>
+            <td>${escapeHTML(event.position)}</td>
+        </tr>
+    `).join("");
+}
+
+function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[char]);
+}
+
+function stopDetection() {
+    running = false;
+
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+    }
+
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+
+    video.srcObject = null;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    placeholder.style.display = "block";
+
+    statusText.textContent = "Status: Detection stopped";
+
+    document.getElementById("current").textContent = "0";
+    document.getElementById("objectList").innerHTML =
+        '<p style="color:#94a3b8">Detection stopped.</p>';
+}
+
+clearBtn.addEventListener("click", () => {
+    eventHistory = [];
+    totalEvents = 0;
+    seenClasses.clear();
+    lastLogged = {};
+
+    document.getElementById("total").textContent = "0";
+    document.getElementById("classes").textContent = "0";
+
+    renderHistory();
+});
+
+window.addEventListener("beforeunload", () => {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+});
+</script>
+
+</body>
+</html>
